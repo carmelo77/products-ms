@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, HttpStatus } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { RpcException } from '@nestjs/microservices';
 
 import { envs } from '../config/envs';
 
@@ -35,7 +36,7 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
   }
 
   async findAll(paginationDto: PaginationDto) {
-    const { page, limit } = paginationDto;
+    const { page = 1, limit = 10 } = paginationDto;
 
     const totalPages = await this.product.count();
     const lastPage = Math.ceil(totalPages / limit);
@@ -62,16 +63,21 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
     });
 
     if (!product) {
-      throw new NotFoundException(`Product ${id} not found`)
+      throw new RpcException({
+        message: `Product ${id} not found`,
+        status: HttpStatus.NOT_FOUND,
+      });
     }
 
     return product;
   }
 
   async update(id: number, updateProductDto: UpdateProductDto) {
+    const { id: _, ...data } = updateProductDto;
+
     return await this.product.update({
       where: { id },
-      data: updateProductDto
+      data
     })
   }
 
